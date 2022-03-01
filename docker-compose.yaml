@@ -1,0 +1,9 @@
+version: '3.7'
+services:
+  storage:
+    image: oittaa/gcp-storage-emulator
+    environment:
+      PORT: 9023
+    ports:
+      - "9023:9023"
+    command: [ "start", "--in-memory", "--default-bucket=staging.megaphone.appspot.com" ]
