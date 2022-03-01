@@ -63,51 +63,51 @@ var fileClauseFn = map[storage.FileEnumType]func(source storage.Query, condition
 }
 
 func withFileDelimiter(source storage.Query, condition *gs.Query) error {
-	if err := validator.New().Var(source.Delimiter, `required`); err != nil {
+	if err := validator.New().Var(source.CloudDelimiter, `required`); err != nil {
 		return err
 	}
-	condition.Delimiter = source.Delimiter
+	condition.Delimiter = source.CloudDelimiter
 	suffix := ""
-	if !strings.HasSuffix(source.Prefix, "/") {
+	if !strings.HasSuffix(source.CloudPrefix, "/") {
 		suffix = "/"
 	}
-	condition.Prefix = source.Prefix + suffix
+	condition.Prefix = source.CloudPrefix + suffix
 	return nil
 }
 
 func withFilePrefix(source storage.Query, condition *gs.Query) error {
-	if err := validator.New().Var(source.Prefix, `required`); err != nil {
+	if err := validator.New().Var(source.CloudPrefix, `required`); err != nil {
 		return err
 	}
-	if !strings.HasPrefix(source.Delimiter, "/") {
-		condition.Prefix = source.Prefix
+	if !strings.HasPrefix(source.CloudDelimiter, "/") {
+		condition.Prefix = source.CloudPrefix
 	}
 	return nil
 }
 
 func withFileVersions(source storage.Query, condition *gs.Query) error {
-	condition.Versions = source.Versions
+	condition.Versions = source.CloudVersions
 	return nil
 }
 
 func withFileStartOffset(source storage.Query, condition *gs.Query) error {
-	if err := validator.New().Var(source.StartOffset, `required`); err != nil {
+	if err := validator.New().Var(source.CloudStartOffset, `required`); err != nil {
 		return err
 	}
-	condition.StartOffset = source.StartOffset
+	condition.StartOffset = source.CloudStartOffset
 	return nil
 }
 
 func withFileEndOffset(source storage.Query, condition *gs.Query) error {
-	if err := validator.New().Var(source.EndOffset, `required`); err != nil {
+	if err := validator.New().Var(source.CloudEndOffset, `required`); err != nil {
 		return err
 	}
-	condition.EndOffset = source.EndOffset
+	condition.EndOffset = source.CloudEndOffset
 	return nil
 }
 
 func withFileProjection(source storage.Query, condition *gs.Query) error {
-	condition.Projection = source.Projection
+	condition.Projection = source.CloudProjection
 	return nil
 }
 

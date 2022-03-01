@@ -363,10 +363,10 @@ func (suite *CloudSuite) TestListMethod() {
 		var fs []storage.File
 		q := storage.Query{}
 		if tc.QueryPrefix != "" {
-			q = storage.WithFilePrefix(q, tc.QueryPrefix)
+			q = storage.WithFileCloudPrefix(q, tc.QueryPrefix)
 		}
 		if tc.Delimiter != "" {
-			q = storage.WithFileDelimiter(q, tc.Delimiter)
+			q = storage.WithFileCloudDelimiter(q, tc.Delimiter)
 		}
 		suite.NoError(file.List(suite.ctx, q, func(file storage.File) error {
 			fs = append(fs, file)

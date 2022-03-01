@@ -110,10 +110,10 @@ func (fh FileHandler) Remove(c *gin.Context) {
 func (fh FileHandler) List(c *gin.Context) {
 	q := storage.Query{}
 	if c.Query("delimiter") != "" {
-		q = storage.WithFileDelimiter(q, c.Query("delimiter"))
+		q = storage.WithFileCloudDelimiter(q, c.Query("delimiter"))
 	}
 	if c.Query("prefix") != "" {
-		q = storage.WithFilePrefix(q, c.Query("prefix"))
+		q = storage.WithFileCloudPrefix(q, c.Query("prefix"))
 	}
 
 	var files []storage.File

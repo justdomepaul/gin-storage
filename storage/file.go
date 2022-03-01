@@ -19,48 +19,48 @@ const (
 )
 
 type Query struct {
-	Fields      []FileEnumType
-	Delimiter   string        // google cloud field
-	Prefix      string        // google cloud field
-	Versions    bool          // google cloud field
-	StartOffset string        // google cloud field
-	EndOffset   string        // google cloud field
-	Projection  gs.Projection // google cloud field
+	Fields           []FileEnumType
+	CloudDelimiter   string        // google cloud field
+	CloudPrefix      string        // google cloud field
+	CloudVersions    bool          // google cloud field
+	CloudStartOffset string        // google cloud field
+	CloudEndOffset   string        // google cloud field
+	CloudProjection  gs.Projection // google cloud field
 }
 
-func WithFileDelimiter(condition Query, delimiter string) Query {
+func WithFileCloudDelimiter(condition Query, delimiter string) Query {
 	condition.Fields = append(condition.Fields, FileCloudDelimiter)
-	condition.Delimiter = delimiter
+	condition.CloudDelimiter = delimiter
 	return condition
 }
 
-func WithFilePrefix(condition Query, prefix string) Query {
+func WithFileCloudPrefix(condition Query, prefix string) Query {
 	condition.Fields = append(condition.Fields, FileCloudPrefix)
-	condition.Prefix = prefix
+	condition.CloudPrefix = prefix
 	return condition
 }
 
-func WithFileVersions(condition Query, versions bool) Query {
+func WithFileCloudVersions(condition Query, versions bool) Query {
 	condition.Fields = append(condition.Fields, FileCloudVersions)
-	condition.Versions = versions
+	condition.CloudVersions = versions
 	return condition
 }
 
-func WithFileStartOffset(condition Query, startOffset string) Query {
+func WithFileCloudStartOffset(condition Query, startOffset string) Query {
 	condition.Fields = append(condition.Fields, FileCloudStartOffset)
-	condition.StartOffset = startOffset
+	condition.CloudStartOffset = startOffset
 	return condition
 }
 
-func WithFileEndOffset(condition Query, endOffset string) Query {
+func WithFileCloudEndOffset(condition Query, endOffset string) Query {
 	condition.Fields = append(condition.Fields, FileCloudEndOffset)
-	condition.EndOffset = endOffset
+	condition.CloudEndOffset = endOffset
 	return condition
 }
 
-func WithFileProjection(condition Query, projection gs.Projection) Query {
+func WithFileCloudProjection(condition Query, projection gs.Projection) Query {
 	condition.Fields = append(condition.Fields, FileCloudProjection)
-	condition.Projection = projection
+	condition.CloudProjection = projection
 	return condition
 }
 

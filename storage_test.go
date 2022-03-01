@@ -344,10 +344,10 @@ func (suite *StorageSuite) TestList() {
 		func() {
 			q := storage.Query{}
 			if tc.Delimiter != "" {
-				q = storage.WithFileDelimiter(q, tc.Delimiter)
+				q = storage.WithFileCloudDelimiter(q, tc.Delimiter)
 			}
 			if tc.Prefix != "" {
-				q = storage.WithFilePrefix(q, tc.Prefix)
+				q = storage.WithFileCloudPrefix(q, tc.Prefix)
 			}
 			testIFile := &testIFile{}
 			testIFile.On("List", mock.Anything, q, mock.Anything).Return(tc.Want.ListError)
