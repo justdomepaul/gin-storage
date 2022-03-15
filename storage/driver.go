@@ -1,6 +1,6 @@
 package storage
 
-import "github.com/justdomepaul/gin-storage/pkg/panicerrorhandler"
+import "github.com/justdomepaul/gin-storage/pkg/errorhandler"
 
 var (
 	FILE    IFile
@@ -14,7 +14,7 @@ func Register(input IFile, closeFn func()) {
 
 func Load() (IFile, func()) {
 	if FILE == nil || CLOSEFN == nil {
-		panic(panicerrorhandler.ErrDriveNotExist)
+		panic(errorhandler.ErrDriveNotExist)
 	}
 	return FILE, CLOSEFN
 }

@@ -3,15 +3,15 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/justdomepaul/gin-storage"
-	"github.com/justdomepaul/gin-storage/pkg/panicerrorhandler"
 	_ "github.com/justdomepaul/gin-storage/storage/cloud"
+	"github.com/justdomepaul/toolbox/errorhandler"
 	"net/http"
 )
 
 func main() {
 	srv := gin.New()
 	srv.MaxMultipartMemory = 8 << 20
-	srv.Use(gin.Logger(), panicerrorhandler.GinPanicErrorHandler("system", "gin server error"))
+	srv.Use(gin.Logger(), errorhandler.GinPanicErrorHandler("system", "gin server error"))
 	srv.GET("/ping", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})

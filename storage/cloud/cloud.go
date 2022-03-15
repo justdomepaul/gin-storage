@@ -7,11 +7,12 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"github.com/justdomepaul/gin-storage/pkg/config"
-	"github.com/justdomepaul/gin-storage/pkg/database/cloud"
-	"github.com/justdomepaul/gin-storage/pkg/panicerrorhandler"
-	zapTool "github.com/justdomepaul/gin-storage/pkg/zap"
+	configTool "github.com/justdomepaul/gin-storage/pkg/config"
+	"github.com/justdomepaul/gin-storage/pkg/errorhandler"
 	"github.com/justdomepaul/gin-storage/storage"
+	"github.com/justdomepaul/toolbox/config"
+	"github.com/justdomepaul/toolbox/database/cloud"
+	zapTool "github.com/justdomepaul/toolbox/zap"
 	"github.com/kelseyhightower/envconfig"
 	"google.golang.org/api/iterator"
 	"io"
@@ -33,22 +34,22 @@ func init() {
 
 func getFile() (storage.IFile, func(), error) {
 	cg := config.Core{}
-	media := config.Media{}
+	media := configTool.Media{}
 	st := config.Cloud{}
 
 	for _, item := range []interface{}{&cg, &media, &st} {
 		err := envconfig.Process("", item)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%w: %s", panicerrorhandler.ErrInitialFileClient, err.Error())
+			return nil, nil, fmt.Errorf("%w: %s", errorhandler.ErrInitialFileClient, err.Error())
 		}
 	}
 	logger, err := zapTool.NewLogger(cg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %s", panicerrorhandler.ErrInitialFileClient, err.Error())
+		return nil, nil, fmt.Errorf("%w: %s", errorhandler.ErrInitialFileClient, err.Error())
 	}
 	cloudStorage, fn, err := cloud.NewExtendStorageDatabase(logger, st)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%w: %s", panicerrorhandler.ErrInitialFileClient, err.Error())
+		return nil, nil, fmt.Errorf("%w: %s", errorhandler.ErrInitialFileClient, err.Error())
 	}
 	return NewFile(media, cloudStorage), fn, nil
 }
@@ -122,7 +123,7 @@ func toFileClauses(source storage.Query) (*gs.Query, error) {
 }
 
 // NewFile method
-func NewFile(env config.Media, session cloud.ISession) *Cloud {
+func NewFile(env configTool.Media, session cloud.ISession) *Cloud {
 	return &Cloud{
 		env:     env,
 		session: session,
@@ -130,54 +131,54 @@ func NewFile(env config.Media, session cloud.ISession) *Cloud {
 }
 
 type Cloud struct {
-	env     config.Media
+	env     configTool.Media
 	session cloud.ISession
 }
 
 func (st *Cloud) Upload(ctx context.Context, prefix string, f io.ReadCloser) (string, error) {
 	mediaID, err := uuid.NewUUID()
 	if err != nil {
-		return "", fmt.Errorf("%w: %s", panicerrorhandler.ErrFailGenerateUUID, err.Error())
+		return "", fmt.Errorf("%w: %s", errorhandler.ErrFailGenerateUUID, err.Error())
 	}
 	pt := mediaID.String()
 	if st.env.PrefixPath != "" {
 		pt = path.Join(st.env.PrefixPath, prefix, mediaID.String())
 	}
 	if err := verifyPath(pt); err != nil {
-		return "", fmt.Errorf("%w: %s", panicerrorhandler.ErrFileUpload, err.Error())
+		return "", fmt.Errorf("%w: %s", errorhandler.ErrFileUpload, err.Error())
 	}
 	wc := st.session.Bucket(st.env.BucketName).Object(pt).NewWriter(ctx)
 	if _, err := io.Copy(wc, f); err != nil {
-		return "", fmt.Errorf("%w: %s", panicerrorhandler.ErrFileUpload, err.Error())
+		return "", fmt.Errorf("%w: %s", errorhandler.ErrFileUpload, err.Error())
 	}
 	if err := wc.Close(); err != nil {
-		return "", fmt.Errorf("%w: %s", panicerrorhandler.ErrFailCloseSession, err.Error())
+		return "", fmt.Errorf("%w: %s", errorhandler.ErrFailCloseSession, err.Error())
 	}
 	return pt, nil
 }
 
 func (st *Cloud) GetURL(ctx context.Context, route string) (string, error) {
 	if err := verifyPath(route); err != nil {
-		return "", fmt.Errorf("%w: %s", panicerrorhandler.ErrFileUpdate, err.Error())
+		return "", fmt.Errorf("%w: %s", errorhandler.ErrFileUpdate, err.Error())
 	}
 	_, err := st.session.Bucket(st.env.BucketName).Object(route).Update(ctx, gs.ObjectAttrsToUpdate{
 		PredefinedACL: "publicRead",
 	})
 	if errors.Is(err, gs.ErrObjectNotExist) {
-		return "", panicerrorhandler.ErrFileNotExist
+		return "", errorhandler.ErrFileNotExist
 	}
 	if err != nil {
-		return "", fmt.Errorf("%w: %s", panicerrorhandler.ErrFileUpdate, err.Error())
+		return "", fmt.Errorf("%w: %s", errorhandler.ErrFileUpdate, err.Error())
 	}
 	return getPublicURL(st.env.BucketName, route)
 }
 
 func (st *Cloud) Remove(ctx context.Context, route string) error {
 	if err := verifyPath(route); err != nil {
-		return fmt.Errorf("%w: %s", panicerrorhandler.ErrFileRemove, err.Error())
+		return fmt.Errorf("%w: %s", errorhandler.ErrFileRemove, err.Error())
 	}
 	if err := st.session.Bucket(st.env.BucketName).Object(route).Delete(ctx); err != nil {
-		return fmt.Errorf("%w: %s", panicerrorhandler.ErrFileRemove, err.Error())
+		return fmt.Errorf("%w: %s", errorhandler.ErrFileRemove, err.Error())
 	}
 	return nil
 }
@@ -199,11 +200,11 @@ func iterFiles(ctx context.Context, handler *gs.BucketHandle, q *gs.Query, h sto
 			break
 		}
 		if err != nil {
-			return fmt.Errorf("%w: %s", panicerrorhandler.ErrGetFile, err.Error())
+			return fmt.Errorf("%w: %s", errorhandler.ErrGetFile, err.Error())
 		}
 		publicURL, err := getPublicURL(attrs.Bucket, attrs.Name)
 		if err != nil {
-			return fmt.Errorf("%w: %s", panicerrorhandler.ErrGetFile, err.Error())
+			return fmt.Errorf("%w: %s", errorhandler.ErrGetFile, err.Error())
 		}
 		node := &File{}
 		if attrs.Prefix == "" {
@@ -223,7 +224,7 @@ func iterFiles(ctx context.Context, handler *gs.BucketHandle, q *gs.Query, h sto
 		}
 		err = h(node)
 		if err != nil {
-			return fmt.Errorf("%w: %s", panicerrorhandler.ErrGetFile, err.Error())
+			return fmt.Errorf("%w: %s", errorhandler.ErrGetFile, err.Error())
 		}
 	}
 	return nil
@@ -232,7 +233,7 @@ func iterFiles(ctx context.Context, handler *gs.BucketHandle, q *gs.Query, h sto
 func getPublicURL(bucketName, route string) (string, error) {
 	u, err := url.Parse(StorageDomain)
 	if err != nil {
-		return "", fmt.Errorf("%w: %s", panicerrorhandler.ErrFileUpdate, err.Error())
+		return "", fmt.Errorf("%w: %s", errorhandler.ErrFileUpdate, err.Error())
 	}
 	u.Path = path.Join(u.Path, bucketName, route)
 	return u.String(), nil

@@ -5,7 +5,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/justdomepaul/gin-storage/pkg/config"
-	"github.com/justdomepaul/gin-storage/pkg/panicerrorhandler"
+	"github.com/justdomepaul/gin-storage/pkg/errorhandler"
 	"github.com/justdomepaul/gin-storage/storage"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/api/option"
@@ -150,7 +150,7 @@ func (suite *CloudSuite) TestGetURLMethod() {
 			Prefix:    "sub",
 			ErrorPath: "/media/sub/",
 			Want: want{
-				Error: panicerrorhandler.ErrFileUpdate,
+				Error: errorhandler.ErrFileUpdate,
 			},
 		},
 		{
@@ -162,7 +162,7 @@ func (suite *CloudSuite) TestGetURLMethod() {
 			Prefix:    "sub",
 			ErrorPath: "/media/sub",
 			Want: want{
-				Error: panicerrorhandler.ErrFileNotExist,
+				Error: errorhandler.ErrFileNotExist,
 			},
 		},
 	}
@@ -218,7 +218,7 @@ func (suite *CloudSuite) TestRemoveMethod() {
 			Prefix:    "sub",
 			ErrorPath: "/media/sub/",
 			Want: want{
-				Error: panicerrorhandler.ErrFileRemove,
+				Error: errorhandler.ErrFileRemove,
 			},
 		},
 		{
@@ -230,7 +230,7 @@ func (suite *CloudSuite) TestRemoveMethod() {
 			Prefix:    "sub",
 			ErrorPath: "/media/sub",
 			Want: want{
-				Error: panicerrorhandler.ErrFileRemove,
+				Error: errorhandler.ErrFileRemove,
 			},
 		},
 	}

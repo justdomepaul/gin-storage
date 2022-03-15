@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/justdomepaul/toolbox/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"os"
@@ -25,7 +26,7 @@ func (suite *MediaSuite) SetupSuite() {
 func (suite *MediaSuite) TestDefaultOption() {
 	t := suite.T()
 	options := &Media{}
-	suite.NoError(LoadFromEnv(options))
+	suite.NoError(config.LoadFromEnv(options))
 	assert.Equal(t, suite.StorageDomain, options.StorageDomain)
 	assert.Equal(t, suite.BucketName, options.BucketName)
 }

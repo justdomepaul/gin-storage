@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/gin-gonic/gin"
-	"github.com/justdomepaul/gin-storage/pkg/panicerrorhandler"
+	errorhandlerTool "github.com/justdomepaul/gin-storage/pkg/errorhandler"
 	"github.com/justdomepaul/gin-storage/storage"
+	"github.com/justdomepaul/toolbox/errorhandler"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"io"
@@ -54,7 +55,7 @@ func NewMockGinServer() *gin.Engine {
 	router := gin.Default()
 	router.Use(
 		gin.Logger(),
-		panicerrorhandler.GinPanicErrorHandler("system", "Mock Test Gin Server"))
+		errorhandler.GinPanicErrorHandler("system", "Mock Test Gin Server"))
 	return router
 }
 
@@ -92,6 +93,44 @@ func PostFile(uri string, forms map[string]io.Reader, headers map[string]string,
 		}
 		if _, err := io.Copy(fw, r); err != nil {
 			break
+		}
+	}
+	w.Close()
+
+	req := httptest.NewRequest(http.MethodPost, uri, &b)
+	req.Header.Add("Content-Type", w.FormDataContentType())
+	return getBody(req, headers, router)
+}
+
+func PostFiles(uri string, forms map[string][]io.Reader, headers map[string]string, router *gin.Engine) ([]byte, error) {
+	var (
+		b   bytes.Buffer
+		err error
+	)
+	w := multipart.NewWriter(&b)
+	for key, rs := range forms {
+		for _, r := range rs {
+			var fw io.Writer
+			if x, ok := r.(io.Closer); ok {
+				defer x.Close()
+			}
+			// Add an file
+			if _, ok := r.(*os.File); ok {
+				h := make(textproto.MIMEHeader)
+				h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s.txt"`, key, time.Now().Format("20060102150405")))
+				h.Set("Content-Type", "image/png")
+				if fw, err = w.CreatePart(h); err != nil {
+					break
+				}
+			} else {
+				// Add other fields
+				if fw, err = w.CreateFormField(key); err != nil {
+					break
+				}
+			}
+			if _, err := io.Copy(fw, r); err != nil {
+				break
+			}
 		}
 	}
 	w.Close()
@@ -155,12 +194,16 @@ func (suite *StorageSuite) TestRegister() {
 	suite.T().Log(route)
 	suite.Equal(DefaultPrefix, route.Routes()[0].Path)
 	suite.Equal(http.MethodPost, route.Routes()[0].Method)
-	suite.Equal(DefaultPrefix, route.Routes()[1].Path)
-	suite.Equal(http.MethodPut, route.Routes()[1].Method)
+	suite.Equal(DefaultPrefix+"/multiple", route.Routes()[1].Path)
+	suite.Equal(http.MethodPost, route.Routes()[1].Method)
 	suite.Equal(DefaultPrefix, route.Routes()[2].Path)
-	suite.Equal(http.MethodDelete, route.Routes()[2].Method)
-	suite.Equal(DefaultPrefix, route.Routes()[3].Path)
-	suite.Equal(http.MethodGet, route.Routes()[3].Method)
+	suite.Equal(http.MethodPut, route.Routes()[2].Method)
+	suite.Equal(DefaultPrefix+"/multiple", route.Routes()[3].Path)
+	suite.Equal(http.MethodPut, route.Routes()[3].Method)
+	suite.Equal(DefaultPrefix, route.Routes()[4].Path)
+	suite.Equal(http.MethodDelete, route.Routes()[4].Method)
+	suite.Equal(DefaultPrefix, route.Routes()[5].Path)
+	suite.Equal(http.MethodGet, route.Routes()[5].Method)
 	suite.T().Log(route.Routes()[0].Path)
 	suite.T().Log(storage.FILE)
 }
@@ -188,7 +231,7 @@ func (suite *StorageSuite) TestUpload() {
 			Prefix: "test",
 			Want: want{
 				Path:        "test/testPath",
-				UploadError: panicerrorhandler.ErrFileUpload,
+				UploadError: errorhandlerTool.ErrFileUpload,
 			},
 		},
 	}
@@ -212,9 +255,73 @@ func (suite *StorageSuite) TestUpload() {
 
 			resp, err := PostFile("/storage", forms, map[string]string{}, route)
 			if tc.Want.UploadError == nil {
+				suite.NoError(err)
 				var result map[string]interface{}
 				suite.NoError(json.Unmarshal(resp, &result))
 				suite.Equal(tc.Want.Path, result["path"])
+			} else {
+				suite.Error(err)
+			}
+		}()
+	}
+}
+
+func (suite *StorageSuite) TestBatch() {
+	type want struct {
+		Path        string
+		UploadError error
+	}
+
+	testCases := []struct {
+		Label  string
+		Prefix string
+		Want   want
+	}{
+		{
+			Label:  "Upload media",
+			Prefix: "test",
+			Want: want{
+				Path: "test/testPath",
+			},
+		},
+		{
+			Label:  "Upload media upload fail",
+			Prefix: "test",
+			Want: want{
+				Path:        "test/testPath",
+				UploadError: errorhandlerTool.ErrFileUpload,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		func() {
+			f1, errOpen1 := os.Open("./storage/cloud/image.png")
+			suite.NoError(errOpen1)
+			defer f1.Close()
+			f2, errOpen2 := os.Open("./storage/cloud/image.png")
+			suite.NoError(errOpen2)
+			defer f2.Close()
+
+			testIFile := &testIFile{}
+			testIFile.On("Upload", mock.Anything, tc.Prefix, mock.Anything).Return(tc.Want.Path, tc.Want.UploadError)
+			storage.Register(testIFile, func() {})
+			defer storage.Unload()
+			route := NewMockGinServer()
+			Register(route)
+
+			forms := map[string][]io.Reader{
+				"file[]": {f1, f2},
+				"prefix": {strings.NewReader(tc.Prefix)},
+			}
+
+			resp, err := PostFiles("/storage/multiple", forms, map[string]string{}, route)
+			if tc.Want.UploadError == nil {
+				suite.NoError(err)
+				var result []BatchFile
+				suite.NoError(json.Unmarshal(resp, &result))
+				suite.T().Log(result)
+				suite.Equal(tc.Want.Path, result[0].Path)
+				suite.Equal(tc.Want.Path, result[1].Path)
 			} else {
 				suite.Error(err)
 			}
@@ -244,7 +351,7 @@ func (suite *StorageSuite) TestPublicize() {
 			Label: "Publicize media error",
 			Path:  "test/testPath",
 			Want: want{
-				PublicizeError: panicerrorhandler.ErrFileUpdate,
+				PublicizeError: errorhandlerTool.ErrFileUpdate,
 			},
 		},
 	}
@@ -261,9 +368,82 @@ func (suite *StorageSuite) TestPublicize() {
 				"path": tc.Path,
 			}, map[string]string{}, route)
 			if tc.Want.PublicizeError == nil {
+				suite.NoError(err)
 				var result map[string]interface{}
 				suite.NoError(json.Unmarshal(resp, &result))
 				suite.Equal(tc.Want.URL, result["url"])
+			} else {
+				suite.Error(err)
+			}
+		}()
+	}
+}
+
+func (suite *StorageSuite) TestMultiplePublicize() {
+	type want struct {
+		URL            string
+		PublicizeError error
+	}
+
+	testCases := []struct {
+		Label string
+		Path  string
+		Paths []BatchFile
+		Want  want
+	}{
+		{
+			Label: "Publicize media",
+			Path:  "test/testPath",
+			Paths: []BatchFile{
+				{
+					Filename: "20220310091401.txt",
+					Path:     "test/testPath",
+				},
+				{
+					Filename: "20220310091401.txt",
+					Path:     "test/testPath",
+				},
+			},
+			Want: want{
+				URL: "https://storage.googleapis.com/test/testPath",
+			},
+		},
+		{
+			Label: "Publicize media error",
+			Path:  "test/testPath",
+			Paths: []BatchFile{
+				{
+					Filename: "20220310091401.txt",
+					Path:     "test/testPath",
+				},
+				{
+					Filename: "20220310091401.txt",
+					Path:     "test/testPath",
+				},
+			},
+			Want: want{
+				PublicizeError: errorhandlerTool.ErrFileUpdate,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		func() {
+			testIFile := &testIFile{}
+			testIFile.On("GetURL", mock.Anything, tc.Path).Return(tc.Want.URL, tc.Want.PublicizeError)
+			storage.Register(testIFile, func() {})
+			defer storage.Unload()
+			route := NewMockGinServer()
+			Register(route)
+
+			resp, err := PutJSON("/storage/multiple", map[string]interface{}{
+				"paths": tc.Paths,
+			}, map[string]string{}, route)
+			if tc.Want.PublicizeError == nil {
+				suite.NoError(err)
+				var result []PublicizeURL
+				suite.NoError(json.Unmarshal(resp, &result))
+				suite.Equal(tc.Want.URL, result[0].URL)
+				suite.Equal(tc.Want.URL, result[1].URL)
 			} else {
 				suite.Error(err)
 			}
@@ -290,7 +470,7 @@ func (suite *StorageSuite) TestRemove() {
 			Label: "Remove media error",
 			Path:  "test/testPath",
 			Want: want{
-				RemoveError: panicerrorhandler.ErrFileRemove,
+				RemoveError: errorhandlerTool.ErrFileRemove,
 			},
 		},
 	}
@@ -307,6 +487,7 @@ func (suite *StorageSuite) TestRemove() {
 				"path": tc.Path,
 			}, map[string]string{}, route)
 			if tc.Want.RemoveError == nil {
+				suite.NoError(err)
 				suite.Equal("ok", string(resp))
 			} else {
 				suite.Error(err)
@@ -336,7 +517,7 @@ func (suite *StorageSuite) TestList() {
 		{
 			Label: "List media error",
 			Want: want{
-				ListError: panicerrorhandler.ErrGetFile,
+				ListError: errorhandlerTool.ErrGetFile,
 			},
 		},
 	}
@@ -365,6 +546,7 @@ func (suite *StorageSuite) TestList() {
 			}
 			resp, err := Get("/storage?"+u.Encode(), map[string]string{}, route)
 			if tc.Want.ListError == nil {
+				suite.NoError(err)
 				suite.T().Log(string(resp))
 			} else {
 				suite.Error(err)
