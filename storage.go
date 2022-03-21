@@ -39,7 +39,7 @@ func RouteRegister(rg *gin.RouterGroup, prefixOptions ...string) (closeFn func()
 		prefixRouter.POST("/multiple", handler.Batch)
 		prefixRouter.PUT("", handler.Publicize)
 		prefixRouter.PUT("/multiple", handler.MultiplePublicize)
-		prefixRouter.DELETE("/:id", handler.Remove)
+		prefixRouter.DELETE("", handler.Remove)
 	}
 
 	return fn
@@ -155,7 +155,7 @@ func (fh FileHandler) Remove(c *gin.Context) {
 	req := struct {
 		Path string `validate:"required"`
 	}{
-		Path: c.Param("id"),
+		Path: c.Query("path"),
 	}
 	defer c.Request.Body.Close()
 	if err := validator.New().Struct(&req); err != nil {

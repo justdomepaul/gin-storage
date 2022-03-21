@@ -193,17 +193,17 @@ func (suite *StorageSuite) TestRegister() {
 	Register(route)
 	suite.T().Log(route)
 	suite.Equal(DefaultPrefix, route.Routes()[0].Path)
-	suite.Equal(http.MethodPost, route.Routes()[0].Method)
-	suite.Equal(DefaultPrefix+"/multiple", route.Routes()[1].Path)
+	suite.Equal(http.MethodGet, route.Routes()[0].Method)
+	suite.Equal(DefaultPrefix, route.Routes()[1].Path)
 	suite.Equal(http.MethodPost, route.Routes()[1].Method)
-	suite.Equal(DefaultPrefix, route.Routes()[2].Path)
-	suite.Equal(http.MethodPut, route.Routes()[2].Method)
-	suite.Equal(DefaultPrefix+"/multiple", route.Routes()[3].Path)
+	suite.Equal(DefaultPrefix+"/multiple", route.Routes()[2].Path)
+	suite.Equal(http.MethodPost, route.Routes()[2].Method)
+	suite.Equal(DefaultPrefix, route.Routes()[3].Path)
 	suite.Equal(http.MethodPut, route.Routes()[3].Method)
-	suite.Equal(DefaultPrefix, route.Routes()[4].Path)
-	suite.Equal(http.MethodDelete, route.Routes()[4].Method)
+	suite.Equal(DefaultPrefix+"/multiple", route.Routes()[4].Path)
+	suite.Equal(http.MethodPut, route.Routes()[4].Method)
 	suite.Equal(DefaultPrefix, route.Routes()[5].Path)
-	suite.Equal(http.MethodGet, route.Routes()[5].Method)
+	suite.Equal(http.MethodDelete, route.Routes()[5].Method)
 	suite.T().Log(route.Routes()[0].Path)
 	suite.T().Log(storage.FILE)
 }
@@ -483,9 +483,7 @@ func (suite *StorageSuite) TestRemove() {
 			route := NewMockGinServer()
 			Register(route)
 
-			resp, err := DeleteJSON("/storage", map[string]interface{}{
-				"path": tc.Path,
-			}, map[string]string{}, route)
+			resp, err := DeleteJSON("/storage"+"?path="+tc.Path, map[string]interface{}{}, map[string]string{}, route)
 			if tc.Want.RemoveError == nil {
 				suite.NoError(err)
 				suite.Equal("ok", string(resp))
