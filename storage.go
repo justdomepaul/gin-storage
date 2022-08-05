@@ -64,6 +64,7 @@ func (fh FileHandler) Upload(c *gin.Context) {
 	if err != nil {
 		panic(errorhandler.NewErrExecute(err))
 	}
+	defer f.Close()
 	path, err := fh.storage.Upload(c, c.Request.FormValue("prefix"), f)
 	if err != nil {
 		panic(errorhandler.NewErrDBExecute(err))
